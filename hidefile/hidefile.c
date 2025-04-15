@@ -17,33 +17,42 @@
 int open(const char *pathname, int flags, ...)
 {
 	va_list args;
-    va_start(args, flags);
-    mode_t mode = 0;
+	mode_t mode = 0;
+
+	// Check if O_CREAT is set to extract the third argument
+	va_start(args, flags);
+	if (flags & 0100) {
+		mode = va_arg(args, mode_t);
+	}
+	va_end(args);
+
+	const char *blocked = getenv("BLOCKED");
+	if (blocked != NULL) {
+		char *blocked_copy = strdup(blocked);
+		char *suffix = strtok(blocked_copy, ":");
+
+		while (suffix != NULL) {
+			size_t path_len = strlen(pathname);
+			size_t suffix_len = strlen(suffix);
+
+			if (path_len >= suffix_len &&
+				strcmp(pathname + path_len - suffix_len, suffix) == 0) {
+				free(blocked_copy);
+				errno = EACCES;
+				return -1;
+			}
+
+			suffix = strtok(NULL, ":");
+		}
+		free(blocked_copy);
+	}
+
+	int (*real_open)(const char *, int, ...) = dlsym(RTLD_NEXT, "open");
 
 	if (flags & 0100) {
-        mode = va_arg(args, int);
-    }
-    va_end(args);
-
-    const char *blocked = getenv("BLOCKED");
-    if (blocked != NULL) {
-        char *blocked_copy = strdup(blocked);
-        char *suffix = strtok(blocked_copy, ":");
-
-        while (suffix != NULL) {
-            size_t path_len = strlen(pathname);
-            size_t suffix_len = strlen(suffix);
-
-            if (path_len >= suffix_len &&
-                strcmp(pathname + path_len - suffix_len, suffix) == 0) {
-                free(blocked_copy);
-                errno = EACCES;
-                return -1;
-            }
-
-            suffix = strtok(NULL, ":");
-        }
-        free(blocked_copy);
+		return real_open(pathname, flags, mode);
+	} else {
+		return real_open(pathname, flags);
 	}
 }
 
@@ -60,16 +69,16 @@ struct dirent *readdir(DIR *dirp)
 		return real_readdir(dirp);
 	}
 
-	char *hidden_copy = strdup(hidden);
+	char *hidden_etc = strdup(hidden);
 	char *hidden_names[100]; 
 	int hidden_count = 0;
 
-	char *token = strtok(hidden_copy, ":");
+	char *token = strtok(hidden_etc, ":");
 	while (token != NULL && hidden_count < 100) {
 		hidden_names[hidden_count++] = token;
 		token = strtok(NULL, ":");
 	}
-    // meow
+    // meow 2
 	struct dirent *entry;
 	while ((entry = real_readdir(dirp)) != NULL) {
 		int is_hidden = 0;
@@ -80,11 +89,11 @@ struct dirent *readdir(DIR *dirp)
 			}
 		}
 		if (!is_hidden) {
-			free(hidden_copy);
+			free(hidden_etc);
 			return entry;
 		}
 	}
 
-	free(hidden_copy);
+	free(hidden_etc);
 	return NULL;
 }
