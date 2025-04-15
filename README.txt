@@ -1,9 +1,6 @@
 This directory contains the following directories and files
 
 README.txt: this file
-Makefile: a top-level makefile
-	Run make in this directory to create a zip file called p3-submit.zip for submission.
-
 Each directory contains a Makefile
 	make
 		compiles the program
