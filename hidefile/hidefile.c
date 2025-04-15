@@ -69,7 +69,7 @@ struct dirent *readdir(DIR *dirp)
 		hidden_names[hidden_count++] = token;
 		token = strtok(NULL, ":");
 	}
-
+    // meow
 	struct dirent *entry;
 	while ((entry = real_readdir(dirp)) != NULL) {
 		int is_hidden = 0;
